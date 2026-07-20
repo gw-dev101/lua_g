@@ -2,6 +2,7 @@ package parser
 
 import (
 	"luag/lexer"
+	"strconv"
 )
 
 type Node interface{}
@@ -17,11 +18,15 @@ type LocalStatement struct {
 	Value Expression
 }
 
+func (l *LocalStatement) Node() {}
+
 type IfStatement struct {
 	Condition Expression
 	ThenBody  []Statement
 	ElseBody  []Statement // Added to support 'else'
 }
+
+func (i *IfStatement) Node() {}
 
 type BinaryExpression struct {
 	Left     Expression
@@ -29,9 +34,22 @@ type BinaryExpression struct {
 	Right    Expression
 }
 
-type NumberLiteral struct{ Value string }
+// Node implements [Expression].
+func (b *BinaryExpression) Node() {
+	panic("unimplemented")
+}
+
+type NumberLiteral struct{ Value float64 }
+
+func (n *NumberLiteral) Node() {}
+
 type StringLiteral struct{ Value string }
+
+func (s *StringLiteral) Node() {}
+
 type Identifier struct{ Value string }
+
+func (i *Identifier) Node() {}
 
 // FunctionCallStatement represents a standalone statement like print("greater")
 type FunctionCallStatement struct {
@@ -39,10 +57,16 @@ type FunctionCallStatement struct {
 	Args []Expression
 }
 
+func (f *FunctionCallStatement) Node() {}
+
 type Parser struct {
 	lexer        *lexer.Lexer
 	currentToken lexer.Token
 	peekToken    lexer.Token
+}
+
+func (p *Parser) ParseChunk() *Chunk {
+	return ParseChunk(p)
 }
 
 func NewParser(l *lexer.Lexer) *Parser {
@@ -206,7 +230,7 @@ func parse_expression(p *Parser, minPrecedence int) Expression {
 	// Parse primary token
 	switch p.currentToken.Type {
 	case lexer.TokenTypeNumber:
-		left = &NumberLiteral{Value: p.currentToken.Literal}
+		left = &NumberLiteral{Value: mustParseFloat(p.currentToken.Literal)}
 		p.nextToken()
 	case lexer.TokenTypeString:
 		left = &StringLiteral{Value: p.currentToken.Literal}
@@ -232,4 +256,13 @@ func parse_expression(p *Parser, minPrecedence int) Expression {
 	}
 
 	return left
+}
+
+func mustParseFloat(s string) float64 {
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		panic(err)
+	}
+	return f
+
 }
