@@ -35,9 +35,7 @@ type BinaryExpression struct {
 }
 
 // Node implements [Expression].
-func (b *BinaryExpression) Node() {
-	panic("unimplemented")
-}
+func (b *BinaryExpression) Node() {}
 
 type NumberLiteral struct{ Value float64 }
 
