@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"fmt"
 	"luag/lexer"
 	"luag/parser"
 	"testing"
@@ -22,8 +23,8 @@ end`
 	chunk := p.ParseChunk()
 
 	r := NewRuntime()
-	r.ExecuteChunk(chunk)
-
+	output := r.ExecuteChunkWithOutput(chunk)
+	fmt.Printf("Output:\n%s", output)
 	// Check if variable 'a' is set correctly
 	if val, exists := r.Variables["a"]; !exists || val != float64(10) {
 		t.Errorf("Expected variable 'a' to be 10, got %v (%T)", val, val)
