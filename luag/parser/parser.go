@@ -156,7 +156,7 @@ func parse_if_statement(p *Parser) Statement {
 	// Loop until we hit 'else' or 'end'
 	for p.currentToken.Type != lexer.TokenTypeEOF {
 		if p.currentToken.Type == lexer.TokenTypeKeyword &&
-			(p.currentToken.Literal == lexer.KeywordEnd || p.currentToken.Literal == "else") {
+			(p.currentToken.Literal == lexer.KeywordEnd || p.currentToken.Literal == lexer.KeywordElse) {
 			break
 		}
 		stmt := parse_statement(p)
@@ -169,7 +169,7 @@ func parse_if_statement(p *Parser) Statement {
 
 	elseBody := []Statement{}
 	// If we stopped because of an 'else', parse the else block
-	if p.currentToken.Type == lexer.TokenTypeKeyword && p.currentToken.Literal == "else" {
+	if p.currentToken.Type == lexer.TokenTypeKeyword && p.currentToken.Literal == lexer.KeywordElse {
 		p.nextToken() // consume 'else'
 		for p.currentToken.Type != lexer.TokenTypeEOF {
 			if p.currentToken.Type == lexer.TokenTypeKeyword && p.currentToken.Literal == lexer.KeywordEnd {
