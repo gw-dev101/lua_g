@@ -49,4 +49,18 @@ end`
 	if binaryExpr.Operator != ">" {
 		t.Errorf("Expected operator '>', got '%s'", binaryExpr.Operator)
 	}
+
+	// Ensure body statements (e.g., print(...)) are parsed
+	if len(ifStmt.ThenBody) != 1 {
+		t.Fatalf("Expected then-body to have 1 statement, got %d", len(ifStmt.ThenBody))
+	}
+	if _, ok := ifStmt.ThenBody[0].(*FunctionCallStatement); !ok {
+		t.Fatalf("Expected then-body statement to be FunctionCallStatement, got %T", ifStmt.ThenBody[0])
+	}
+	if len(ifStmt.ElseBody) != 1 {
+		t.Fatalf("Expected else-body to have 1 statement, got %d", len(ifStmt.ElseBody))
+	}
+	if _, ok := ifStmt.ElseBody[0].(*FunctionCallStatement); !ok {
+		t.Fatalf("Expected else-body statement to be FunctionCallStatement, got %T", ifStmt.ElseBody[0])
+	}
 }
