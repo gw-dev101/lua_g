@@ -151,9 +151,7 @@ func (l *Lexer) readString() string {
 	for l.ch != '"' && l.ch != 0 {
 		l.readChar()
 	}
-	str := l.input[position:l.position]
-	l.readChar() // skip closing quote
-	return str
+	return l.input[position:l.position]
 }
 
 func (l *Lexer) peekChar() byte {
