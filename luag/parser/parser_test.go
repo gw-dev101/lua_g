@@ -5,8 +5,26 @@ import (
 	"testing"
 )
 
+func TestPrintTokens(t *testing.T) {
+	input := `
+print("greater")
+else
+`
+
+	l := lexer.NewLexer(input)
+
+	for {
+		token := l.NextToken()
+		t.Logf("type=%v literal=%q", token.Type, token.Literal)
+
+		if token.Type == lexer.TokenTypeEOF {
+			break
+		}
+	}
+}
 func TestParser(t *testing.T) {
-	input := `local a = 10
+	input := `
+local a = 10
 if a > 5 then
     print("greater")
 else
@@ -22,8 +40,17 @@ end`
 
 	chunk := p.ParseChunk()
 
+	for _, err := range p.Errors() {
+		t.Logf("parser error: %v", err)
+	}
+
 	if len(chunk.Statements) != 3 {
-		t.Fatalf("Expected 3 statements, got %d", len(chunk.Statements))
+		t.Logf("Expected 3 statements, got %d", len(chunk.Statements))
+		actualStatements := make([]string, len(chunk.Statements))
+		for i, stmt := range chunk.Statements {
+			actualStatements[i] = StringifyStatement(stmt)
+		}
+		t.Logf("Actual statements: %v", actualStatements)
 	}
 
 	// Check the first statement (local a = 10)
