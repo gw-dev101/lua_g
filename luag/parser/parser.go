@@ -117,7 +117,7 @@ func parse_statement(p *Parser) Statement {
 		}
 	case lexer.TokenTypeIdentifier:
 		// Check for a simple function call like print(...)
-		if p.peekToken.Type == lexer.TokenTypeOperator && p.peekToken.Literal == "(" {
+		if p.peekToken.Type == lexer.TokenTypePunctuation && p.peekToken.Literal == "(" {
 			return parse_function_call(p)
 		}
 		return nil
