@@ -194,14 +194,21 @@ func parse_if_statement(p *Parser) Statement {
 func parse_function_call(p *Parser) Statement {
 	funcName := p.currentToken.Literal
 	p.nextToken() // consume identifier
-	p.nextToken() // consume '('
 
-	args := []Expression{}
-	if p.currentToken.Type != lexer.TokenTypeOperator || p.currentToken.Literal != ")" {
-		args = append(args, parse_expression(p, 0))
+	if !p.expectCurrent(lexer.TokenTypePunctuation, "(") {
+		return nil
 	}
 
-	if !p.expectCurrent(lexer.TokenTypeOperator, ")") {
+	args := []Expression{}
+	if p.currentToken.Type != lexer.TokenTypePunctuation || p.currentToken.Literal != ")" {
+		args = append(args, parse_expression(p, 0))
+		for p.currentToken.Type == lexer.TokenTypePunctuation && p.currentToken.Literal == "," {
+			p.nextToken() // consume ','
+			args = append(args, parse_expression(p, 0))
+		}
+	}
+
+	if !p.expectCurrent(lexer.TokenTypePunctuation, ")") {
 		return nil
 	}
 
