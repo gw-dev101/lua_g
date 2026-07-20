@@ -21,6 +21,27 @@ func (r *Runtime) ExecuteChunk(chunk *parser.Chunk) {
 	}
 }
 
+// executechunk+catch print statements to a buffer for testing purposes
+func (r *Runtime) ExecuteChunkWithOutput(chunk *parser.Chunk) string {
+	var output string
+	for _, stmt := range chunk.Statements {
+		switch s := stmt.(type) {
+		case *parser.FunctionCallStatement:
+			if s.Name == "print" {
+				for _, arg := range s.Args {
+					value := r.EvaluateExpression(arg)
+					output += fmt.Sprintf("%v\n", value)
+				}
+			} else {
+				r.ExecuteFunctionCall(s)
+			}
+		default:
+			r.ExecuteStatement(stmt)
+		}
+	}
+	return output
+}
+
 func (r *Runtime) ExecuteStatement(stmt parser.Statement) {
 	switch s := stmt.(type) {
 	case *parser.LocalStatement:
