@@ -22,8 +22,8 @@ end`
 
 	chunk := p.ParseChunk()
 
-	if len(chunk.Statements) != 2 {
-		t.Fatalf("Expected 2 statements, got %d", len(chunk.Statements))
+	if len(chunk.Statements) != 3 {
+		t.Fatalf("Expected 3 statements, got %d", len(chunk.Statements))
 	}
 
 	// Check the first statement (local a = 10)
