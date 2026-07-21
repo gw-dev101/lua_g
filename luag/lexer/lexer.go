@@ -185,7 +185,7 @@ func isDigit(ch byte) bool {
 }
 func isKeyword(literal string) bool {
 	switch literal {
-	case KeywordIf, KeywordThen, KeywordElse, KeywordEnd, KeywordLocal:
+	case KeywordIf, KeywordThen, KeywordElse, KeywordEnd, KeywordLocal, KeywordFunction, KeywordReturn:
 		return true
 	default:
 		return false

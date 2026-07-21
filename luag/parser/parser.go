@@ -191,7 +191,11 @@ func (p *Parser) parseStatement() Statement {
 
 		case lexer.KeywordFunction:
 			return p.parseFunctionDefStatement()
-
+		case lexer.KeywordReturn:
+			p.nextToken()
+			return &ReturnStatement{
+				ReturnValue: p.parseExpression(1),
+			}
 		default:
 			return nil
 		}
