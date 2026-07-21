@@ -40,8 +40,20 @@ type FunctionCallStatement struct {
 	Name string
 	Args []Expression
 }
+type FunctionDefStatement struct {
+	Name       string
+	Parameters []string
+	Body       []Statement
+}
 
+func (*FunctionDefStatement) statementNode()  {}
 func (*FunctionCallStatement) statementNode() {}
+
+type ReturnStatement struct {
+	ReturnValue Expression
+}
+
+func (*ReturnStatement) statementNode() {}
 
 type BinaryExpression struct {
 	Left     Expression
@@ -177,6 +189,9 @@ func (p *Parser) parseStatement() Statement {
 		case lexer.KeywordLocal:
 			return p.parseLocalStatement()
 
+		case lexer.KeywordFunction:
+			return p.parseFunctionDefStatement()
+
 		default:
 			return nil
 		}
@@ -193,7 +208,6 @@ func (p *Parser) parseStatement() Statement {
 		return nil
 	}
 }
-
 func (p *Parser) parseLocalStatement() Statement {
 	// currentToken is "local".
 	p.nextToken()
@@ -420,6 +434,67 @@ func (p *Parser) parseExpression(minPrecedence int) Expression {
 	return left
 }
 
+// a function definition statement is of the form:
+// function <name>(<params>) <body> end , returns isn't actually necessary
+func (p *Parser) parseFunctionDefStatement() Statement {
+	// currentToken is "function".
+	p.nextToken()
+
+	if p.currentToken.Type != lexer.TokenTypeIdentifier {
+		p.addError(
+			"expected identifier after function, got %q",
+			p.currentToken.Literal,
+		)
+		return nil
+	}
+
+	funcName := p.currentToken.Literal
+	p.nextToken()
+
+	if !p.expectCurrent(lexer.TokenTypePunctuation, "(") {
+		return nil
+	}
+
+	params := []string{}
+
+	if !isPunctuation(p.currentToken, ")") {
+		for {
+			if p.currentToken.Type != lexer.TokenTypeIdentifier {
+				p.addError(
+					"expected identifier in parameter list of %q",
+					funcName,
+				)
+				return nil
+			}
+
+			params = append(params, p.currentToken.Literal)
+			p.nextToken()
+
+			if !isPunctuation(p.currentToken, ",") {
+				break
+			}
+
+			p.nextToken()
+		}
+	}
+
+	if !p.expectCurrent(lexer.TokenTypePunctuation, ")") {
+		return nil
+	}
+
+	body := p.parseBlockUntil(lexer.KeywordEnd)
+
+	if !p.expectCurrent(lexer.TokenTypeKeyword, lexer.KeywordEnd) {
+		p.addError("missing 'end' for function definition %q", funcName)
+		return nil
+	}
+
+	return &FunctionDefStatement{
+		Name:       funcName,
+		Parameters: params,
+		Body:       body,
+	}
+}
 func (p *Parser) parsePrimaryExpression() Expression {
 	switch p.currentToken.Type {
 	case lexer.TokenTypeNumber:
@@ -453,10 +528,12 @@ func (p *Parser) parsePrimaryExpression() Expression {
 		return &Identifier{
 			Value: value,
 		}
-
-	default:
+	//if its a function definition statement, parse it
+	case lexer.TokenTypeKeyword:
 		return nil
 	}
+
+	return nil
 }
 
 // Debug stringification
