@@ -21,11 +21,13 @@ const (
 )
 const (
 	// Keywords
-	KeywordIf    = "if"
-	KeywordThen  = "then"
-	KeywordElse  = "else"
-	KeywordEnd   = "end"
-	KeywordLocal = "local"
+	KeywordIf       = "if"
+	KeywordThen     = "then"
+	KeywordElse     = "else"
+	KeywordEnd      = "end"
+	KeywordLocal    = "local"
+	KeywordFunction = "function"
+	KeywordReturn   = "return"
 )
 
 type Token struct {
