@@ -30,11 +30,21 @@ const (
 	KeywordReturn   = "return"
 )
 
+type Position struct {
+	Offset int
+	Line   int
+	Column int
+}
+
+type Span struct {
+	Start Position
+	End   Position // exclusive
+}
+
 type Token struct {
 	Type    TokenType
 	Literal string
-	Line    int
-	Column  int
+	Span    Span
 }
 
 type Lexer struct {
@@ -78,23 +88,22 @@ func (l *Lexer) NextToken() Token {
 		if l.peekChar() == '=' {
 			ch := l.ch
 			l.readChar()
-			tok = Token{Type: TokenTypeOperator, Literal: string(ch) + string(l.ch), Line: l.line, Column: l.column}
+			tok = Token{Type: TokenTypeOperator, Literal: string(ch) + string(l.ch), Span: Span{Start: Position{Offset: l.position, Line: l.line, Column: l.column}, End: Position{Offset: l.position, Line: l.line, Column: l.column}}}
 		} else {
-			tok = Token{Type: TokenTypeOperator, Literal: string(l.ch), Line: l.line, Column: l.column}
+			tok = Token{Type: TokenTypeOperator, Literal: string(l.ch), Span: Span{Start: Position{Offset: l.position, Line: l.line, Column: l.column}, End: Position{Offset: l.position, Line: l.line, Column: l.column}}}
 		}
 	case '>':
-		tok = Token{Type: TokenTypeOperator, Literal: string(l.ch), Line: l.line, Column: l.column}
+		tok = Token{Type: TokenTypeOperator, Literal: string(l.ch), Span: Span{Start: Position{Offset: l.position, Line: l.line, Column: l.column}, End: Position{Offset: l.position, Line: l.line, Column: l.column}}}
 	case '<':
-		tok = Token{Type: TokenTypeOperator, Literal: string(l.ch), Line: l.line, Column: l.column}
+		tok = Token{Type: TokenTypeOperator, Literal: string(l.ch), Span: Span{Start: Position{Offset: l.position, Line: l.line, Column: l.column}, End: Position{Offset: l.position, Line: l.line, Column: l.column}}}
 	case '+', '-', '*', '/':
-		tok = Token{Type: TokenTypeOperator, Literal: string(l.ch), Line: l.line, Column: l.column}
+		tok = Token{Type: TokenTypeOperator, Literal: string(l.ch), Span: Span{Start: Position{Offset: l.position, Line: l.line, Column: l.column}, End: Position{Offset: l.position, Line: l.line, Column: l.column}}}
 	case '(', ')', '{', '}', ',', ';':
-		tok = Token{Type: TokenTypePunctuation, Literal: string(l.ch), Line: l.line, Column: l.column}
+		tok = Token{Type: TokenTypePunctuation, Literal: string(l.ch), Span: Span{Start: Position{Offset: l.position, Line: l.line, Column: l.column}, End: Position{Offset: l.position, Line: l.line, Column: l.column}}}
 	case '"':
 		tok.Literal = l.readString()
 		tok.Type = TokenTypeString
-		tok.Line = l.line
-		tok.Column = l.column
+		tok.Span = Span{Start: Position{Offset: l.position, Line: l.line, Column: l.column}, End: Position{Offset: l.position, Line: l.line, Column: l.column}}
 	case 0:
 		tok.Literal = ""
 		tok.Type = TokenTypeEOF
@@ -102,8 +111,7 @@ func (l *Lexer) NextToken() Token {
 		if isLetter(l.ch) {
 			tok.Literal = l.readIdentifier()
 			tok.Type = TokenTypeIdentifier
-			tok.Line = l.line
-			tok.Column = l.column
+			tok.Span = Span{Start: Position{Offset: l.position, Line: l.line, Column: l.column}, End: Position{Offset: l.position, Line: l.line, Column: l.column}}
 			if isKeyword(tok.Literal) {
 				tok.Type = TokenTypeKeyword
 			}
@@ -111,8 +119,7 @@ func (l *Lexer) NextToken() Token {
 		} else if isDigit(l.ch) {
 			tok.Literal = l.readNumber()
 			tok.Type = TokenTypeNumber
-			tok.Line = l.line
-			tok.Column = l.column
+			tok.Span = Span{Start: Position{Offset: l.position, Line: l.line, Column: l.column}, End: Position{Offset: l.position, Line: l.line, Column: l.column}}
 			return tok
 		} else {
 			fmt.Fprintf(os.Stderr, "Illegal character: %q at line %d, column %d\n", l.ch, l.line, l.column)
