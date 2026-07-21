@@ -40,7 +40,7 @@ end`
 		}
 
 		// Handle visual line breaks to match original source layout
-		for currentLine < tok.Line {
+		for currentLine < tok.Span.Start.Line {
 			fmt.Println()
 			currentLine++
 		}
