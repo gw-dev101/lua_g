@@ -96,6 +96,12 @@ func (l *Lexer) NextToken() Token {
 		tok = Token{Type: TokenTypeOperator, Literal: string(l.ch), Span: Span{Start: Position{Offset: l.position, Line: l.line, Column: l.column}, End: Position{Offset: l.position, Line: l.line, Column: l.column}}}
 	case '<':
 		tok = Token{Type: TokenTypeOperator, Literal: string(l.ch), Span: Span{Start: Position{Offset: l.position, Line: l.line, Column: l.column}, End: Position{Offset: l.position, Line: l.line, Column: l.column}}}
+	case '~':
+		if l.peekChar() == '=' {
+			ch := l.ch
+			l.readChar()
+			tok = Token{Type: TokenTypeOperator, Literal: string(ch) + string(l.ch), Span: Span{Start: Position{Offset: l.position, Line: l.line, Column: l.column}, End: Position{Offset: l.position, Line: l.line, Column: l.column}}}
+		}
 	case '+', '-', '*', '/':
 		tok = Token{Type: TokenTypeOperator, Literal: string(l.ch), Span: Span{Start: Position{Offset: l.position, Line: l.line, Column: l.column}, End: Position{Offset: l.position, Line: l.line, Column: l.column}}}
 	case '(', ')', '{', '}', ',', ';':
