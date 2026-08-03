@@ -106,6 +106,10 @@ func (l *Lexer) NextToken() Token {
 		tok = Token{Type: TokenTypeOperator, Literal: string(l.ch), Span: Span{Start: Position{Offset: l.position, Line: l.line, Column: l.column}, End: Position{Offset: l.position, Line: l.line, Column: l.column}}}
 	case '(', ')', '{', '}', ',', ';':
 		tok = Token{Type: TokenTypePunctuation, Literal: string(l.ch), Span: Span{Start: Position{Offset: l.position, Line: l.line, Column: l.column}, End: Position{Offset: l.position, Line: l.line, Column: l.column}}}
+	case '[':
+		tok = Token{Type: TokenTypePunctuation, Literal: string(l.ch), Span: Span{Start: Position{Offset: l.position, Line: l.line, Column: l.column}, End: Position{Offset: l.position, Line: l.line, Column: l.column}}}
+	case ']':
+		tok = Token{Type: TokenTypePunctuation, Literal: string(l.ch), Span: Span{Start: Position{Offset: l.position, Line: l.line, Column: l.column}, End: Position{Offset: l.position, Line: l.line, Column: l.column}}}
 	case '"':
 		tok.Literal = l.readString()
 		tok.Type = TokenTypeString
