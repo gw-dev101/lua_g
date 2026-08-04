@@ -97,6 +97,14 @@ func (r *Runtime) EvaluateExpression(expr interface{}) interface{} {
 		return r.EvaluateBinaryExpression(left, e.Operator, right)
 	case *parser.TableConstructorExpression:
 		return r.EvaluateTableConstructor(e)
+	case *parser.IndexedAccessExpression:
+		table := r.EvaluateExpression(e.Table)
+		key := r.EvaluateExpression(e.Key)
+		if tbl, ok := table.(*LuaTable); ok {
+			return tbl.Fields[key]
+		}
+		fmt.Printf("TypeError: expected LuaTable for indexed access, got %T\n", table)
+		return nil
 	default:
 		fmt.Printf("Unknown expression type: %T\n", expr)
 		return nil
