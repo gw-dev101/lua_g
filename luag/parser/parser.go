@@ -587,7 +587,7 @@ func (p *Parser) parseTableField() *TableField {
 	if p.currentToken.Type == lexer.TokenTypeIdentifier &&
 		p.peekToken.Type == lexer.TokenTypeOperator &&
 		p.peekToken.Literal == "=" {
-		key := &Identifier{
+		key := &StringLiteral{
 			Value: p.currentToken.Literal,
 		}
 		p.nextToken()
