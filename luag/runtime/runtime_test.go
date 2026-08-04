@@ -7,6 +7,20 @@ import (
 	"testing"
 )
 
+func TestRuntimeHelloWorld(t *testing.T) {
+	input := `print("Hello, World!")`
+
+	l := lexer.NewLexer(input)
+	p := parser.NewParser(l)
+	chunk := p.ParseChunk()
+
+	r := NewRuntime()
+	output := r.ExecuteChunkWithOutput(chunk)
+	fmt.Printf("Output:\n%s", output)
+	if output != "Hello, World!\n" {
+		t.Errorf("Expected output 'Hello, World!', got %q", output)
+	}
+}
 func TestRuntimeIF(t *testing.T) {
 	input := `local a = 10
 if a > 5 then
