@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	START_INDEX = 1
+	START_INDEX = float64(1)
 ) // Lua tables are 1-indexed
 type Runtime struct {
 	Variables map[string]interface{}
