@@ -45,3 +45,37 @@ end`
 	}
 
 }
+func TestRuntimeTableLiteralsmall(t *testing.T) {
+	input := `local t = {1, 2, 3}
+print(t[1])
+print(t[2])
+print(t[3])
+`
+	l := lexer.NewLexer(input)
+	p := parser.NewParser(l)
+	chunk := p.ParseChunk()
+
+	r := NewRuntime()
+	output := r.ExecuteChunkWithOutput(chunk)
+	fmt.Printf("Output:\n%s", output)
+	if output != "1\n2\n3\n" {
+		t.Errorf("Expected output '1\\n2\\n3\\n', got %q", output)
+	}
+}
+func TestRuntimeTableLiteralWithKeys(t *testing.T) {
+	input := `local t = {a = 1, b = 2, c = 3}
+print(t["a"])
+print(t["b"])
+print(t["c"])
+`
+	l := lexer.NewLexer(input)
+	p := parser.NewParser(l)
+	chunk := p.ParseChunk()
+
+	r := NewRuntime()
+	output := r.ExecuteChunkWithOutput(chunk)
+	fmt.Printf("Output:\n%s", output)
+	if output != "1\n2\n3\n" {
+		t.Errorf("Expected output '1\\n2\\n3\\n', got %q", output)
+	}
+}
