@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestRuntime(t *testing.T) {
+func TestRuntimeIF(t *testing.T) {
 	input := `local a = 10
 if a > 5 then
 	print("greater")
