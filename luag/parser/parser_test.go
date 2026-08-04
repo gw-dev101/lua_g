@@ -153,3 +153,119 @@ end`
 		t.Errorf("Expected operator '+', got %q", binaryExpr.Operator)
 	}
 }
+func TestTableConstructorExpression_simple(t *testing.T) {
+	input := `
+local t = { "value1", "value2" }
+`
+	l := lexer.NewLexer(input)
+	p := NewParser(l)
+
+	chunk := p.ParseChunk()
+
+	// Check for parser errors
+	for _, err := range p.Errors() {
+		t.Errorf("parser error: %v", err)
+	}
+
+	// Ensure we parsed exactly 1 statement
+	if len(chunk.Statements) != 1 {
+		t.Fatalf("Expected 1 statement, got %d", len(chunk.Statements))
+	}
+
+	// Verify it's a LocalStatement
+	localStmt, ok := chunk.Statements[0].(*LocalStatement)
+	if !ok {
+		t.Fatalf("Expected statement to be *LocalStatement, got %T", chunk.Statements[0])
+	}
+
+	// Check the variable name
+	if localStmt.Name != "t" {
+		t.Errorf("Expected variable name 't', got %q", localStmt.Name)
+	}
+
+	// Check the initializer is a TableConstructorExpression
+	tableExpr, ok := localStmt.Value.(*TableConstructorExpression)
+	if !ok {
+		t.Fatalf("Expected initializer to be *TableConstructorExpression, got %T", localStmt.Value)
+	}
+
+	// Check the fields in the table constructor
+	expectedValues := []string{"value1", "value2"}
+	if len(tableExpr.Fields) != len(expectedValues) {
+		t.Fatalf("Expected %d fields, got %d", len(expectedValues), len(tableExpr.Fields))
+	}
+
+	for i, field := range tableExpr.Fields {
+		valueStr, ok := field.Value.(*StringLiteral)
+		if !ok {
+			t.Fatalf("Expected field value to be *StringLiteral, got %T", field.Value)
+		}
+		if valueStr.Value != expectedValues[i] {
+			t.Errorf("Expected value at index %d to be %q, got %q", i, expectedValues[i], valueStr.Value)
+		}
+	}
+}
+func TestTableConstructorExpression_complicated(t *testing.T) {
+	input := `
+local t = { key1 = "value1", key2 = "value2" }
+`
+	l := lexer.NewLexer(input)
+	p := NewParser(l)
+
+	chunk := p.ParseChunk()
+
+	// Check for parser errors
+	for _, err := range p.Errors() {
+		t.Errorf("parser error: %v", err)
+	}
+
+	// Ensure we parsed exactly 1 statement
+	if len(chunk.Statements) != 1 {
+		t.Fatalf("Expected 1 statement, got %d", len(chunk.Statements))
+	}
+
+	// Verify it's a LocalStatement
+	localStmt, ok := chunk.Statements[0].(*LocalStatement)
+	if !ok {
+		t.Fatalf("Expected statement to be *LocalStatement, got %T", chunk.Statements[0])
+	}
+
+	// Check the variable name
+	if localStmt.Name != "t" {
+		t.Errorf("Expected variable name 't', got %q", localStmt.Name)
+	}
+
+	// Check the initializer is a TableConstructorExpression
+	tableExpr, ok := localStmt.Value.(*TableConstructorExpression)
+	if !ok {
+		t.Fatalf("Expected initializer to be *TableConstructorExpression, got %T", localStmt.Value)
+	}
+
+	// Check the fields in the table constructor
+	expectedFields := map[string]string{
+		"key1": "value1",
+		"key2": "value2",
+	}
+
+	if len(tableExpr.Fields) != len(expectedFields) {
+		t.Fatalf("Expected %d fields, got %d", len(expectedFields), len(tableExpr.Fields))
+	}
+
+	for _, field := range tableExpr.Fields {
+		keyIdent, ok := field.Key.(*Identifier)
+		if !ok {
+			t.Fatalf("Expected field key to be *Identifier, got %T", field.Key)
+		}
+		valueStr, ok := field.Value.(*StringLiteral)
+		if !ok {
+			t.Fatalf("Expected field value to be *StringLiteral, got %T", field.Value)
+		}
+
+		expectedValue, exists := expectedFields[keyIdent.Value]
+		if !exists {
+			t.Errorf("Unexpected field key %q", keyIdent.Value)
+		} else if valueStr.Value != expectedValue {
+			t.Errorf("Expected value for key %q to be %q, got %q", keyIdent.Value, expectedValue, valueStr.Value)
+		}
+	}
+}

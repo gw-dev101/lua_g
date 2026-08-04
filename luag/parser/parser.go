@@ -16,6 +16,16 @@ type Statement interface {
 type Expression interface {
 	expressionNode()
 }
+type TableConstructorExpression struct {
+	Fields []TableField
+}
+
+func (*TableConstructorExpression) expressionNode() {}
+
+type TableField struct {
+	Key   Expression // optional, can be nil if the field is an array
+	Value Expression
+}
 
 type Chunk struct {
 	Statements []Statement
@@ -205,6 +215,7 @@ func (p *Parser) parseStatement() Statement {
 			p.peekToken.Literal == "(" {
 			return p.parseFunctionCallStatement()
 		}
+		//
 
 		return nil
 
@@ -499,6 +510,107 @@ func (p *Parser) parseFunctionDefStatement() Statement {
 		Body:       body,
 	}
 }
+func (p *Parser) parseTableConstructorExpression() Expression {
+	// currentToken is "{".
+	p.nextToken()
+
+	fields := []TableField{}
+	for !isPunctuation(p.currentToken, "}") {
+		if p.currentToken.Type == lexer.TokenTypeEOF {
+			p.addError("unexpected EOF while parsing table constructor")
+			return nil
+		}
+
+		field := p.parseTableField()
+		if field == nil {
+			p.addError("expected table field, got %q", p.currentToken.Literal)
+			return nil
+		}
+		fields = append(fields, *field)
+
+		if isPunctuation(p.currentToken, ",") || isPunctuation(p.currentToken, ";") {
+			p.nextToken()
+			if isPunctuation(p.currentToken, "}") {
+				break
+			}
+			continue
+		}
+
+		if !isPunctuation(p.currentToken, "}") {
+			p.addError("expected ',' or '}' in table constructor, got %q", p.currentToken.Literal)
+			return nil
+		}
+	}
+
+	if !p.expectCurrent(lexer.TokenTypePunctuation, "}") {
+		return nil
+	}
+
+	return &TableConstructorExpression{
+		Fields: fields,
+	}
+}
+
+func (p *Parser) parseTableField() *TableField {
+	var key Expression
+	var value Expression
+
+	if isPunctuation(p.currentToken, "[") {
+		p.nextToken()
+		key = p.parseExpression(1)
+		if key == nil {
+			p.addError("expected expression for table field key, got %q", p.currentToken.Literal)
+			return nil
+		}
+		if !p.expectCurrent(lexer.TokenTypePunctuation, "]") {
+			return nil
+		}
+		if !p.expectCurrent(lexer.TokenTypeOperator, "=") {
+			return nil
+		}
+		value = p.parseExpression(1)
+		if value == nil {
+			p.addError("expected expression after '=' in table field")
+			return nil
+		}
+		return &TableField{
+			Key:   key,
+			Value: value,
+		}
+	}
+	if p.currentToken.Type == lexer.TokenTypeIdentifier &&
+		p.peekToken.Type == lexer.TokenTypeOperator &&
+		p.peekToken.Literal == "=" {
+		key := &Identifier{
+			Value: p.currentToken.Literal,
+		}
+		p.nextToken()
+		if !p.expectCurrent(lexer.TokenTypeOperator, "=") {
+			return nil
+		}
+		value := p.parseExpression(1)
+		if value == nil {
+			p.addError("expected expression after '=' in table field")
+			return nil
+		}
+		return &TableField{
+			Key:   key,
+			Value: value,
+		}
+	}
+	value = p.parseExpression(1)
+	if value == nil {
+		p.addError(
+			"expected table field expression, got %q",
+			p.currentToken.Literal,
+		)
+		return nil
+	}
+	return &TableField{
+		Key:   nil,
+		Value: value,
+	}
+}
 func (p *Parser) parsePrimaryExpression() Expression {
 	switch p.currentToken.Type {
 	case lexer.TokenTypeNumber:
@@ -531,6 +643,10 @@ func (p *Parser) parsePrimaryExpression() Expression {
 
 		return &Identifier{
 			Value: value,
+		}
+	case lexer.TokenTypePunctuation:
+		if p.currentToken.Literal == "{" {
+			return p.parseTableConstructorExpression()
 		}
 	//if its a function definition statement, parse it
 	case lexer.TokenTypeKeyword:
@@ -624,6 +740,29 @@ func StringifyExpression(expr Expression) string {
 			StringifyExpression(e.Left),
 			e.Operator,
 			StringifyExpression(e.Right),
+		)
+	case *TableConstructorExpression:
+		fields := ""
+
+		for index, field := range e.Fields {
+			if index > 0 {
+				fields += ", "
+			}
+
+			if field.Key != nil {
+				fields += fmt.Sprintf(
+					"[%s] = %s",
+					StringifyExpression(field.Key),
+					StringifyExpression(field.Value),
+				)
+			} else {
+				fields += StringifyExpression(field.Value)
+			}
+		}
+
+		return fmt.Sprintf(
+			"TableConstructorExpression(Fields: [%s])",
+			fields,
 		)
 
 	case nil:
