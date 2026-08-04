@@ -16,6 +16,16 @@ type Statement interface {
 type Expression interface {
 	expressionNode()
 }
+type TableConstructorExpression struct {
+	Fields []TableField
+}
+
+func (*TableConstructorExpression) expressionNode() {}
+
+type TableField struct {
+	Key   Expression // optional, can be nil if the field is an array
+	Value Expression
+}
 
 type Chunk struct {
 	Statements []Statement
@@ -205,6 +215,7 @@ func (p *Parser) parseStatement() Statement {
 			p.peekToken.Literal == "(" {
 			return p.parseFunctionCallStatement()
 		}
+		//
 
 		return nil
 
