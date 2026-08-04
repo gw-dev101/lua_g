@@ -570,19 +570,44 @@ func (p *Parser) parseTableField() *TableField {
 		}
 		value = p.parseExpression(1)
 		if value == nil {
-			p.addError("expected expression for table field value, got %q", p.currentToken.Literal)
+			p.addError("expected expression after '=' in table field")
 			return nil
 		}
-	} else {
-		value = p.parseExpression(1)
-		if value == nil {
-			p.addError("expected expression for table field value, got %q", p.currentToken.Literal)
-			return nil
+		return &TableField{
+			Key:   key,
+			Value: value,
 		}
 	}
-
+	if p.currentToken.Type == lexer.TokenTypeIdentifier &&
+		p.peekToken.Type == lexer.TokenTypeOperator &&
+		p.peekToken.Literal == "=" {
+		key := &Identifier{
+			Value: p.currentToken.Literal,
+		}
+		p.nextToken()
+		if !p.expectCurrent(lexer.TokenTypeOperator, "=") {
+			return nil
+		}
+		value := p.parseExpression(1)
+		if value == nil {
+			p.addError("expected expression after '=' in table field")
+			return nil
+		}
+		return &TableField{
+			Key:   key,
+			Value: value,
+		}
+	}
+	value = p.parseExpression(1)
+	if value == nil {
+		p.addError(
+			"expected table field expression, got %q",
+			p.currentToken.Literal,
+		)
+		return nil
+	}
 	return &TableField{
-		Key:   key,
+		Key:   nil,
 		Value: value,
 	}
 }
