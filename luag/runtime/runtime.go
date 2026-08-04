@@ -5,10 +5,24 @@ import (
 	"luag/parser"
 )
 
+const (
+	START_INDEX = 1
+) // Lua tables are 1-indexed
 type Runtime struct {
 	Variables map[string]interface{}
 }
+type LuaTable struct {
+	Fields map[interface{}]interface{}
+}
 
+func NewLuaTable() *LuaTable {
+	return &LuaTable{
+		Fields: make(map[interface{}]interface{}),
+	}
+}
+func (t *LuaTable) String() string {
+	return fmt.Sprintf("LuaTable{%v}", t.Fields)
+}
 func NewRuntime() *Runtime {
 	return &Runtime{
 		Variables: make(map[string]interface{}),
@@ -81,6 +95,8 @@ func (r *Runtime) EvaluateExpression(expr interface{}) interface{} {
 		left := r.EvaluateExpression(e.Left)
 		right := r.EvaluateExpression(e.Right)
 		return r.EvaluateBinaryExpression(left, e.Operator, right)
+	case *parser.TableConstructorExpression:
+		return r.EvaluateTableConstructor(e)
 	default:
 		fmt.Printf("Unknown expression type: %T\n", expr)
 		return nil
@@ -122,6 +138,26 @@ func (r *Runtime) EvaluateBinaryExpression(left interface{}, operator string, ri
 		fmt.Printf("Unknown operator: %s\n", operator)
 		return nil
 	}
+}
+
+func (r *Runtime) EvaluateTableConstructor(expr *parser.TableConstructorExpression) *LuaTable {
+	table := NewLuaTable()
+	nextIndex := START_INDEX
+	for _, field := range expr.Fields {
+		value := r.EvaluateExpression(field.Value)
+		if field.Key == nil { // Implicit integer key
+			table.Fields[nextIndex] = value
+			nextIndex++
+			continue
+		}
+		key := r.EvaluateExpression(field.Key)
+		if key == nil {
+			fmt.Println("Error: Table field key evaluated to nil")
+			continue
+		}
+		table.Fields[key] = value
+	}
+	return table
 }
 
 func (r *Runtime) ExecuteFunctionCall(call *parser.FunctionCallStatement) {
