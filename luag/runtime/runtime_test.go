@@ -79,3 +79,40 @@ print(t["c"])
 		t.Errorf("Expected output '1\\n2\\n3\\n', got %q", output)
 	}
 }
+func TestRuntimeTableLiteralMixed(t *testing.T) {
+	input := `local t = {1, 2, a = 3, b = 4}
+print(t[1])
+print(t[2])
+print(t["a"])
+print(t["b"])
+`
+	l := lexer.NewLexer(input)
+	p := parser.NewParser(l)
+	chunk := p.ParseChunk()
+
+	r := NewRuntime()
+	output := r.ExecuteChunkWithOutput(chunk)
+	fmt.Printf("Output:\n%s", output)
+	if output != "1\n2\n3\n4\n" {
+		t.Errorf("Expected output '1\\n2\\n3\\n4\\n', got %q", output)
+	}
+}
+
+func TestRuntimeNestedTableLiteral(t *testing.T) {
+	input := `local t = {1, 2, {a = 3, b = 4}}
+print(t[1])
+print(t[2])
+print(t[3]["a"])
+print(t[3]["b"])
+`
+	l := lexer.NewLexer(input)
+	p := parser.NewParser(l)
+	chunk := p.ParseChunk()
+
+	r := NewRuntime()
+	output := r.ExecuteChunkWithOutput(chunk)
+	fmt.Printf("Output:\n%s", output)
+	if output != "1\n2\n3\n4\n" {
+		t.Errorf("Expected output '1\\n2\\n3\\n4\\n', got %q", output)
+	}
+}
