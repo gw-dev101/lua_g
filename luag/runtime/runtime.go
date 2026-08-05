@@ -142,6 +142,49 @@ func (r *Runtime) EvaluateBinaryExpression(left interface{}, operator string, ri
 		return nil
 	case "==":
 		return left == right
+	case "~=":
+		return left != right
+	case "+":
+		switch l := left.(type) {
+		case float64:
+			if r, ok := right.(float64); ok {
+				return l + r
+			}
+		case string:
+			if r, ok := right.(string); ok {
+				return l + r
+			}
+		}
+		fmt.Printf("TypeError: invalid operands for %s: %T and %T\n", operator, left, right)
+		return nil
+	case "-":
+		if l, ok := left.(float64); ok {
+			if r, ok := right.(float64); ok {
+				return l - r
+			}
+		}
+		fmt.Printf("TypeError: invalid operands for %s: %T and %T\n", operator, left, right)
+		return nil
+	case "*":
+		if l, ok := left.(float64); ok {
+			if r, ok := right.(float64); ok {
+				return l * r
+			}
+		}
+		fmt.Printf("TypeError: invalid operands for %s: %T and %T\n", operator, left, right)
+		return nil
+	case "/":
+		if l, ok := left.(float64); ok {
+			if r, ok := right.(float64); ok {
+				if r == 0 {
+					fmt.Println("Error: Division by zero")
+					return nil
+				}
+				return l / r
+			}
+		}
+		fmt.Printf("TypeError: invalid operands for %s: %T and %T\n", operator, left, right)
+		return nil
 	default:
 		fmt.Printf("Unknown operator: %s\n", operator)
 		return nil
