@@ -664,6 +664,59 @@ func (p *Parser) parseTableField() *TableField {
 		Value: value,
 	}
 }
+func (p *Parser) parseFunctionExpression() Expression {
+	// currentToken is "function".
+	p.nextToken()
+
+	if !p.expectCurrent(lexer.TokenTypePunctuation, "(") {
+		return nil
+	}
+
+	parameters := []string{}
+
+	if !isPunctuation(p.currentToken, ")") {
+		for {
+			if p.currentToken.Type != lexer.TokenTypeIdentifier {
+				p.addError(
+					"expected parameter name, got %q",
+					p.currentToken.Literal,
+				)
+				return nil
+			}
+
+			parameters = append(
+				parameters,
+				p.currentToken.Literal,
+			)
+			p.nextToken()
+
+			if !isPunctuation(p.currentToken, ",") {
+				break
+			}
+
+			p.nextToken()
+		}
+	}
+
+	if !p.expectCurrent(lexer.TokenTypePunctuation, ")") {
+		return nil
+	}
+
+	body := p.parseBlockUntil(lexer.KeywordEnd)
+
+	if !p.expectCurrent(
+		lexer.TokenTypeKeyword,
+		lexer.KeywordEnd,
+	) {
+		p.addError("missing 'end' for function expression")
+		return nil
+	}
+
+	return &FunctionExpression{
+		Parameters: parameters,
+		Body:       body,
+	}
+}
 
 // parse postfix expression, for example a[1] or a.b
 func (p *Parser) parsePostfixExpression(expr Expression) Expression {
@@ -739,7 +792,16 @@ func (p *Parser) parsePrimaryExpression() Expression {
 		}
 
 		expr = p.parseTableConstructorExpression()
+	case lexer.TokenTypeKeyword:
+		if p.currentToken.Literal != lexer.KeywordFunction {
+			p.addError(
+				"unexpected keyword %q in expression",
+				p.currentToken.Literal,
+			)
+			return nil
+		}
 
+		expr = p.parseFunctionExpression()
 	default:
 		p.addError(
 			"unexpected token %q in expression",
