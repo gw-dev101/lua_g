@@ -14,6 +14,14 @@ type Runtime struct {
 type LuaTable struct {
 	Fields map[interface{}]interface{}
 }
+type LuaFunction struct {
+	Parameters []string
+	Body       []parser.Statement
+}
+type executionresult struct {
+	returned bool
+	value    interface{}
+}
 
 func NewLuaTable() *LuaTable {
 	return &LuaTable{
@@ -56,30 +64,75 @@ func (r *Runtime) ExecuteChunkWithOutput(chunk *parser.Chunk) string {
 	return output
 }
 
-func (r *Runtime) ExecuteStatement(stmt parser.Statement) {
+func (r *Runtime) ExecuteStatement(stmt parser.Statement) executionresult {
 	switch s := stmt.(type) {
 	case *parser.LocalStatement:
 		value := r.EvaluateExpression(s.Value)
 		r.Variables[s.Name] = value
+		return executionresult{returned: false, value: nil}
+	case *parser.ReturnStatement:
+		return executionresult{returned: true, value: r.EvaluateExpression(s.ReturnValue)}
 	case *parser.IfStatement:
 		condition := r.EvaluateExpression(s.Condition)
-		if conditionBool, ok := condition.(bool); ok && conditionBool {
-			for _, thenStmt := range s.ThenBody {
-				r.ExecuteStatement(thenStmt)
+		body := s.ThenBody
+		if cond, ok := condition.(bool); ok && cond {
+			for _, stmt := range body {
+				result := r.ExecuteStatement(stmt)
+				if result.returned {
+					return result
+				}
 			}
 		} else {
-			for _, elseStmt := range s.ElseBody {
-				r.ExecuteStatement(elseStmt)
+			for _, stmt := range s.ElseBody {
+				result := r.ExecuteStatement(stmt)
+				if result.returned {
+					return result
+				}
 			}
 		}
+		return executionresult{returned: false, value: nil}
 	case *parser.FunctionCallStatement:
 		r.ExecuteFunctionCall(s)
+		return executionresult{returned: false, value: nil}
+	case *parser.FunctionDefStatement:
+		function := &LuaFunction{
+			Parameters: s.Parameters,
+			Body:       s.Body,
+		}
+		r.Variables[s.Name] = function
+		return executionresult{returned: false, value: nil}
 	default:
 		fmt.Printf("Unknown statement type: %T\n", stmt)
+		return executionresult{returned: false, value: nil}
 	}
 }
+func (r *Runtime) callLuaFunction(function *LuaFunction, args []interface{}) interface{} {
+	globalScope := r.Variables
+	localScope := make(map[string]interface{})
 
-func (r *Runtime) EvaluateExpression(expr interface{}) interface{} {
+	for name, value := range globalScope {
+		localScope[name] = value
+	}
+	for i, param := range function.Parameters {
+		if i < len(args) {
+			localScope[param] = args[i]
+		} else {
+			localScope[param] = nil
+		}
+	}
+	r.Variables = localScope
+	defer func() {
+		r.Variables = globalScope
+	}()
+	for _, stmt := range function.Body {
+		result := r.ExecuteStatement(stmt)
+		if result.returned {
+			return result.value
+		}
+	}
+	return nil
+}
+func (r *Runtime) EvaluateExpression(expr parser.Expression) any {
 	switch e := expr.(type) {
 	case *parser.NumberLiteral:
 		return e.Value
@@ -105,6 +158,13 @@ func (r *Runtime) EvaluateExpression(expr interface{}) interface{} {
 		}
 		fmt.Printf("TypeError: expected LuaTable for indexed access, got %T\n", table)
 		return nil
+	case *parser.FunctionCallExpression:
+		return r.EvaluateFunctionCall(e)
+	case *parser.FunctionExpression:
+		return &LuaFunction{
+			Parameters: e.Parameters,
+			Body:       e.Body,
+		}
 	default:
 		fmt.Printf("Unknown expression type: %T\n", expr)
 		return nil
@@ -189,6 +249,27 @@ func (r *Runtime) EvaluateBinaryExpression(left interface{}, operator string, ri
 		fmt.Printf("Unknown operator: %s\n", operator)
 		return nil
 	}
+}
+func (r *Runtime) EvaluateFunctionCall(
+	call *parser.FunctionCallExpression,
+) interface{} {
+	functionValue := r.EvaluateExpression(call.Function)
+
+	function, ok := functionValue.(*LuaFunction)
+	if !ok {
+		fmt.Printf(
+			"TypeError: attempted to call value of type %T\n",
+			functionValue,
+		)
+		return nil
+	}
+
+	args := make([]interface{}, len(call.Args))
+	for i, arg := range call.Args {
+		args[i] = r.EvaluateExpression(arg)
+	}
+
+	return r.callLuaFunction(function, args)
 }
 
 func (r *Runtime) EvaluateTableConstructor(expr *parser.TableConstructorExpression) *LuaTable {
