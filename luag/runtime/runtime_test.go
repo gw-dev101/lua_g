@@ -152,3 +152,24 @@ print(t[3]["b"])
 		t.Errorf("Expected output '2\\n4\\n2\\n2\\n', got %q", output)
 	}
 }
+func TestRuntimeTableLiteralWithfunctiondef(t *testing.T) {
+	input := `local t = {a = function(x) return x * 2 end}
+print(t["a"](5))
+`
+	l := lexer.NewLexer(input)
+	p := parser.NewParser(l)
+	chunk := p.ParseChunk()
+	if len(p.Errors()) > 0 {
+		for _, err := range p.Errors() {
+			t.Errorf("parser error: %v", err)
+		}
+		t.Fatalf("Parser encountered errors, cannot proceed with runtime test.")
+	}
+
+	r := NewRuntime()
+	output := r.ExecuteChunkWithOutput(chunk)
+	fmt.Printf("Output:\n%s", output)
+	if output != "10\n" {
+		t.Errorf("Expected output '10\\n', got %q", output)
+	}
+}
