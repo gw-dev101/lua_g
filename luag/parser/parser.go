@@ -50,6 +50,13 @@ type FunctionCallStatement struct {
 	Name string
 	Args []Expression
 }
+type FunctionCallExpression struct {
+	Function Expression
+	Args     []Expression
+}
+
+func (*FunctionCallExpression) expressionNode() {}
+
 type FunctionDefStatement struct {
 	Name       string
 	Parameters []string
@@ -516,6 +523,39 @@ func (p *Parser) parseFunctionDefStatement() Statement {
 		Body:       body,
 	}
 }
+func (p *Parser) parseFunctionCallExpression(function Expression) Expression {
+	// currentToken is "(".
+	p.nextToken()
+
+	args := []Expression{}
+
+	if !isPunctuation(p.currentToken, ")") {
+		for {
+			arg := p.parseExpression(1)
+			if arg == nil {
+				p.addError(
+					"expected expression in argument list of function call",
+				)
+				return nil
+			}
+
+			args = append(args, arg)
+
+			// parseExpression leaves currentToken on either "," or ")".
+			if !isPunctuation(p.currentToken, ",") {
+				break
+			}
+			p.nextToken()
+		}
+	}
+	if !p.expectCurrent(lexer.TokenTypePunctuation, ")") {
+		return nil
+	}
+	return &FunctionCallExpression{
+		Function: function,
+		Args:     args,
+	}
+}
 func (p *Parser) parseTableConstructorExpression() Expression {
 	// currentToken is "{".
 	p.nextToken()
@@ -708,8 +748,7 @@ func (p *Parser) parsePrimaryExpression() Expression {
 			expr = p.parsePostfixExpression(expr)
 
 		case isPunctuation(p.currentToken, "("):
-			//expr = p.parseFunctionCallExpression(expr) TODO: implement function call expressions
-
+			expr = p.parseFunctionCallExpression(expr)
 		default:
 			return expr
 		}
