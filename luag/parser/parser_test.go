@@ -252,20 +252,20 @@ local t = { key1 = "value1", key2 = "value2" }
 	}
 
 	for _, field := range tableExpr.Fields {
-		keyIdent, ok := field.Key.(*Identifier)
+		keyStr, ok := field.Key.(*StringLiteral)
 		if !ok {
-			t.Fatalf("Expected field key to be *Identifier, got %T", field.Key)
+			t.Fatalf("Expected field key to be *StringLiteral, got %T", field.Key)
 		}
 		valueStr, ok := field.Value.(*StringLiteral)
 		if !ok {
 			t.Fatalf("Expected field value to be *StringLiteral, got %T", field.Value)
 		}
 
-		expectedValue, exists := expectedFields[keyIdent.Value]
+		expectedValue, exists := expectedFields[keyStr.Value]
 		if !exists {
-			t.Errorf("Unexpected field key %q", keyIdent.Value)
+			t.Errorf("Unexpected field key %q", keyStr.Value)
 		} else if valueStr.Value != expectedValue {
-			t.Errorf("Expected value for key %q to be %q, got %q", keyIdent.Value, expectedValue, valueStr.Value)
+			t.Errorf("Expected value for key %q to be %q, got %q", keyStr.Value, expectedValue, valueStr.Value)
 		}
 	}
 }

@@ -50,11 +50,24 @@ type FunctionCallStatement struct {
 	Name string
 	Args []Expression
 }
+type FunctionCallExpression struct {
+	Function Expression
+	Args     []Expression
+}
+
+func (*FunctionCallExpression) expressionNode() {}
+
 type FunctionDefStatement struct {
 	Name       string
 	Parameters []string
 	Body       []Statement
 }
+type IndexedAccessExpression struct {
+	Table Expression
+	Key   Expression
+}
+
+func (*IndexedAccessExpression) expressionNode() {}
 
 func (*FunctionDefStatement) statementNode()  {}
 func (*FunctionCallStatement) statementNode() {}
@@ -64,6 +77,13 @@ type ReturnStatement struct {
 }
 
 func (*ReturnStatement) statementNode() {}
+
+type FunctionExpression struct {
+	Parameters []string
+	Body       []Statement
+}
+
+func (*FunctionExpression) expressionNode() {}
 
 type BinaryExpression struct {
 	Left     Expression
@@ -510,6 +530,39 @@ func (p *Parser) parseFunctionDefStatement() Statement {
 		Body:       body,
 	}
 }
+func (p *Parser) parseFunctionCallExpression(function Expression) Expression {
+	// currentToken is "(".
+	p.nextToken()
+
+	args := []Expression{}
+
+	if !isPunctuation(p.currentToken, ")") {
+		for {
+			arg := p.parseExpression(1)
+			if arg == nil {
+				p.addError(
+					"expected expression in argument list of function call",
+				)
+				return nil
+			}
+
+			args = append(args, arg)
+
+			// parseExpression leaves currentToken on either "," or ")".
+			if !isPunctuation(p.currentToken, ",") {
+				break
+			}
+			p.nextToken()
+		}
+	}
+	if !p.expectCurrent(lexer.TokenTypePunctuation, ")") {
+		return nil
+	}
+	return &FunctionCallExpression{
+		Function: function,
+		Args:     args,
+	}
+}
 func (p *Parser) parseTableConstructorExpression() Expression {
 	// currentToken is "{".
 	p.nextToken()
@@ -581,7 +634,7 @@ func (p *Parser) parseTableField() *TableField {
 	if p.currentToken.Type == lexer.TokenTypeIdentifier &&
 		p.peekToken.Type == lexer.TokenTypeOperator &&
 		p.peekToken.Literal == "=" {
-		key := &Identifier{
+		key := &StringLiteral{
 			Value: p.currentToken.Literal,
 		}
 		p.nextToken()
@@ -611,7 +664,99 @@ func (p *Parser) parseTableField() *TableField {
 		Value: value,
 	}
 }
+func (p *Parser) parseFunctionExpression() Expression {
+	// currentToken is "function".
+	p.nextToken()
+
+	if !p.expectCurrent(lexer.TokenTypePunctuation, "(") {
+		return nil
+	}
+
+	parameters := []string{}
+
+	if !isPunctuation(p.currentToken, ")") {
+		for {
+			if p.currentToken.Type != lexer.TokenTypeIdentifier {
+				p.addError(
+					"expected parameter name, got %q",
+					p.currentToken.Literal,
+				)
+				return nil
+			}
+
+			parameters = append(
+				parameters,
+				p.currentToken.Literal,
+			)
+			p.nextToken()
+
+			if !isPunctuation(p.currentToken, ",") {
+				break
+			}
+
+			p.nextToken()
+		}
+	}
+
+	if !p.expectCurrent(lexer.TokenTypePunctuation, ")") {
+		return nil
+	}
+
+	body := p.parseBlockUntil(lexer.KeywordEnd)
+
+	if !p.expectCurrent(
+		lexer.TokenTypeKeyword,
+		lexer.KeywordEnd,
+	) {
+		p.addError("missing 'end' for function expression")
+		return nil
+	}
+
+	return &FunctionExpression{
+		Parameters: parameters,
+		Body:       body,
+	}
+}
+
+// parse postfix expression, for example a[1] or a.b
+func (p *Parser) parsePostfixExpression(expr Expression) Expression {
+	if isPunctuation(p.currentToken, "[") {
+		p.nextToken()
+		key := p.parseExpression(1)
+		if key == nil {
+			p.addError("expected expression for table access key, got %q", p.currentToken.Literal)
+			return nil
+		}
+		if !p.expectCurrent(lexer.TokenTypePunctuation, "]") {
+			return nil
+		}
+		expr = &IndexedAccessExpression{
+			Table: expr,
+			Key:   key,
+		}
+	}
+	if isPunctuation(p.currentToken, ".") {
+		p.nextToken()
+		if p.currentToken.Type != lexer.TokenTypeIdentifier {
+			p.addError("expected identifier after '.', got %q", p.currentToken.Literal)
+			return nil
+		}
+		key := &StringLiteral{
+			Value: p.currentToken.Literal,
+		}
+		p.nextToken()
+		expr = &IndexedAccessExpression{
+			Table: expr,
+			Key:   key,
+		}
+	}
+	return expr
+}
+
+// primary expressions are the most basic expressions, like numbers, strings, identifiers, table constructors, indexed access, and function calls. They can be combined with operators to form more complex expressions.
 func (p *Parser) parsePrimaryExpression() Expression {
+	var expr Expression
+
 	switch p.currentToken.Type {
 	case lexer.TokenTypeNumber:
 		value, err := strconv.ParseFloat(p.currentToken.Literal, 64)
@@ -623,37 +768,64 @@ func (p *Parser) parsePrimaryExpression() Expression {
 			return nil
 		}
 
+		expr = &NumberLiteral{Value: value}
 		p.nextToken()
-
-		return &NumberLiteral{
-			Value: value,
-		}
-
 	case lexer.TokenTypeString:
-		value := p.currentToken.Literal
-		p.nextToken()
-
-		return &StringLiteral{
-			Value: value,
+		expr = &StringLiteral{
+			Value: p.currentToken.Literal,
 		}
+		p.nextToken()
 
 	case lexer.TokenTypeIdentifier:
-		value := p.currentToken.Literal
+		expr = &Identifier{
+			Value: p.currentToken.Literal,
+		}
 		p.nextToken()
 
-		return &Identifier{
-			Value: value,
-		}
 	case lexer.TokenTypePunctuation:
-		if p.currentToken.Literal == "{" {
-			return p.parseTableConstructorExpression()
+		if p.currentToken.Literal != "{" {
+			p.addError(
+				"unexpected punctuation %q in expression",
+				p.currentToken.Literal,
+			)
+			return nil
 		}
-	//if its a function definition statement, parse it
+
+		expr = p.parseTableConstructorExpression()
 	case lexer.TokenTypeKeyword:
+		if p.currentToken.Literal != lexer.KeywordFunction {
+			p.addError(
+				"unexpected keyword %q in expression",
+				p.currentToken.Literal,
+			)
+			return nil
+		}
+
+		expr = p.parseFunctionExpression()
+	default:
+		p.addError(
+			"unexpected token %q in expression",
+			p.currentToken.Literal,
+		)
 		return nil
 	}
+	for {
 
-	return nil
+		switch {
+		case isPunctuation(p.currentToken, "["),
+			isPunctuation(p.currentToken, "."):
+			expr = p.parsePostfixExpression(expr)
+
+		case isPunctuation(p.currentToken, "("):
+			expr = p.parseFunctionCallExpression(expr)
+		default:
+			return expr
+		}
+
+		if expr == nil {
+			return nil
+		}
+	}
 }
 
 // Debug stringification
