@@ -116,3 +116,21 @@ print(t[3]["b"])
 		t.Errorf("Expected output '1\\n2\\n3\\n4\\n', got %q", output)
 	}
 }
+func TestRuntimeTableLiteralWithExpressions(t *testing.T) {
+	input := `local t = {1 + 1, 2 * 2, a = 3 - 1, b = 4 / 2}
+print(t[1])
+print(t[2])
+print(t["a"])
+print(t["b"])
+`
+	l := lexer.NewLexer(input)
+	p := parser.NewParser(l)
+	chunk := p.ParseChunk()
+
+	r := NewRuntime()
+	output := r.ExecuteChunkWithOutput(chunk)
+	fmt.Printf("Output:\n%s", output)
+	if output != "2\n4\n2\n2\n" {
+		t.Errorf("Expected output '2\\n4\\n2\\n2\\n', got %q", output)
+	}
+}
