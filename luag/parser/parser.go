@@ -78,6 +78,13 @@ type ReturnStatement struct {
 
 func (*ReturnStatement) statementNode() {}
 
+type FunctionExpression struct {
+	Parameters []string
+	Body       []Statement
+}
+
+func (*FunctionExpression) expressionNode() {}
+
 type BinaryExpression struct {
 	Left     Expression
 	Operator string
